@@ -1,0 +1,196 @@
+pico-8 cartridge // http://www.pico-8.com
+version 27
+__lua__
+function _init()
+ scene="main"
+ main_clr=rnd(5)+1
+ title=make_title("picogalactic fishing")
+ waves=make_waves(10)
+ t=0
+  
+end
+
+
+function _draw()
+ cls()
+ printh(scene)
+ 
+ if (scene == "main") then
+  draw_main()
+ elseif (scene == "credits") then
+  draw_credits()
+ elseif (scene == "game") then
+  draw_game()
+ end
+ 
+ 
+end
+
+
+function _update()
+ t+=1
+ if (scene == "main") then
+  update_main()
+ elseif (scene == "credits") then
+  update_credits()
+ elseif (scene == "game") then
+  update_game()
+ end
+  
+end
+-->8
+-- draw
+
+function draw_main()
+ rectfill(0,0,127,127,main_clr)
+ draw_title(title)
+ draw_waves(waves)
+ draw_menu()
+end
+
+function draw_game()
+ rectfill(0,0,127,127,main_clr)
+ draw_title(title)
+ draw_waves(waves)
+ center("to do", 60, 8)
+ center("❎ back to main menu", 110, 12) 
+end
+
+function draw_credits()
+ rectfill(0,0,127,127,main_clr)
+ draw_title(title)
+ draw_waves(waves)
+ center("designed and developed by", 40, 7)
+ center("pinback", 48, 11)
+ center("inspired by", 60, 7)
+ center("beefheart", 68, 11)
+ center("jolt country games director", 80, 7)
+ center("ice cream jonsey", 88, 11)
+ center("❎ back to main menu", 110, 12) 
+
+end
+
+function draw_menu(menu)
+ center("press 🅾️ to start", 50, 12)
+ center("press ❎ for credits", 70, 12) 
+ center("(c) 2020 jolt country games", 120, 14)
+end
+
+function center(str, y, c) 
+ left=64-#str*2
+ print(str,left,y,c)
+end
+
+function draw_waves(w)
+ for i=1,#w do
+  w[i].frame+=1
+  if (w[i].frame == 0) then
+   w[i].x=flr(rnd(16))
+   w[i].y=flr(rnd(16))
+  end
+  if (w[i].frame == 40) then
+   w[i].frame=flr(rnd(30))-30
+  end
+  if (w[i].frame >= 0) then
+   spr(
+    1+(w[i].frame/10),
+    w[i].x*8,
+    w[i].y*8
+   )
+  end 
+ end
+end
+
+function draw_title(title)
+ left=64-(#title*2.5)
+ for i=1,#title do
+  print(
+   title[i][1],
+   left+5*(i-1)+title[1][3],
+   10+title[1][4],
+   title[i][2])
+  if (t%3==0) then
+   title[i][2]=flr(rnd(16))
+   title[i][3]=flr(rnd(3)-1)
+   title[i][4]=flr(rnd(3)-1)
+  end
+ end
+ spr(16, -8+t/5%136, 20)
+end
+
+-->8
+-- display stuff
+
+function make_title(str)
+ local title = {}
+ for i=1,#str do
+  title[i]={
+   sub(str,i,i),
+   flr(rnd(16)),
+   flr(rnd(3))-1,
+   flr(rnd(3))-1
+  }
+ end
+ return title
+end
+
+function make_waves(count)
+ local waves = {}
+ for i=1,count do
+  waves[i]={
+   frame=flr(rnd(30))-30,
+   x=0,
+   y=0
+  }
+ end
+ return waves
+end
+
+
+-->8
+-- updates
+
+function update_main()
+
+ if (btnp(4)) scene="game"
+ if (btnp(5)) then
+  scene="credits"
+  main_clr=rnd(5)+1
+ end
+ 
+end
+
+function update_credits()
+
+ if (btnp(5)) then
+  main_clr=rnd(5)+1
+  scene="main"
+ end
+  
+end
+
+function update_game()
+
+ if (btnp(5)) then
+  main_clr=rnd(5)+1
+  scene="main"
+ end
+  
+end
+__gfx__
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+007007000000000000000000000000000000000000000000000000000000000000000000000000000000000033003300aa003300330033009900330000000000
+00077000006000000006600000006660000000000000000000000000000000000000000000000000000000000333c5300aaa3530032235300993353000000000
+0007700006060000006006000006060000000666000000000000000000000000000000000000000000000000003cc333003aaa33003223330093333300000000
+007007000000000000000000000000000000000000000000000000000000000000000000000000000000000003ccc33003333aa0023322300993399000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000003300330033003300330032009900990000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0ff00400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0ff00540000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+49999994000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+44555440000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+04444400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
