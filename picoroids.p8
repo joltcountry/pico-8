@@ -18,20 +18,7 @@ function _init()
  ship.turnspeed=5
  ship.thrustdiv=20
  
- roids = {}
- for i=1,numroids do
-  roids[i] = {
-   vec = roidvec,
-   clr = flr(rnd(14))+2,
-   dir = rnd(360),
-	  x = rnd(128),
-	  y = rnd(128),
-	  xvel = rnd(1)-.5,
-	  yvel = rnd(1)-.5,
-	  turnspeed=rnd(6),
-	  turndir=flr(rnd(2))
-  }  
- end
+ init_roids(6)
  
  shots = {
   {
@@ -118,11 +105,29 @@ function _update()
  foreach(roids, spin)
  
  for i = 1,4 do
+  shotcollision(shots[i], roids)
   if (shots[i].time > 1) move(shots[i])
  end
  
  foreach(shots, countdown)
  
+end
+
+function shotcollision(shot, targets)
+ for i=1,#targets do
+  if (
+   shot.time>0 and
+   shot.x > targets[i].x-targets[i].width and
+   shot.x < targets[i].x+targets[i].width and
+   shot.y > targets[i].y-targets[i].width and
+   shot.y < targets[i].y+targets[i].width
+  ) then
+   score += targets[i].score
+   shot.time=0
+   del(targets, targets[i])
+  end
+ end
+ if (#targets==0) init_roids(flr(rnd(10))+2)
 end
  
 function countdown(obj)
@@ -193,6 +198,25 @@ thrustvec2 = {
  {180, 8},
  {210, 4}
 }
+-->8
+function init_roids(num)
+ roids = {}
+ for i=1,num do
+  roids[i] = {
+   vec = roidvec,
+   clr = flr(rnd(14))+2,
+   dir = rnd(360),
+	  x = rnd(128),
+	  y = rnd(128),
+	  xvel = rnd(1)-.5,
+	  yvel = rnd(1)-.5,
+	  turnspeed=rnd(6),
+	  turndir=flr(rnd(2)),
+	  width=5,
+	  score=20
+  }  
+ end
+end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
