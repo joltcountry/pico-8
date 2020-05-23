@@ -4,21 +4,18 @@ __lua__
 function _init()
 
  score = 0
- shipcount = 3
+ mans = 3
  friction = .98
- numroids = 6
+ level = 1
+ numroids = 4
  shottime = 40
-  
- ship = {}
- ship.dir=270
- ship.x=64.5
- ship.y=64.5
- ship.xvel=0
- ship.yvel=0
- ship.turnspeed=5
- ship.thrustdiv=20
+ dead = false
+ game_over = false
+ splosions = {}  
+ levelwait = 0
  
- init_roids(6)
+ init_roids()
+ init_ship() 
  
  shots = {
   {
@@ -48,60 +45,115 @@ function _draw()
   end
  end
    
- drawvec(ship.x, ship.y, ship.dir,
-  shipvec, 15)
- if btn(2) then
-  sfx(0)
-  drawvec(ship.x, ship.y, ship.dir,
-  thrustvec, 10)
-  drawvec(ship.x, ship.y, ship.dir,
-  thrustvec2, 8)
+ if (not dead) then
+	 drawvec(ship.x, ship.y, ship.dir,
+	  shipvec, ship.clr)
+	 if btn(2) then
+	  sfx(0)
+	  drawvec(ship.x, ship.y, ship.dir,
+	  thrustvec, 10)
+	  drawvec(ship.x, ship.y, ship.dir,
+	  thrustvec2, 8)
+	 end
+
  end
- print("score:", 1, 1, 5);
- print(score, 25, 1, 11)
+
+ if (game_over) then
+  print ("game over", 45, 62, rnd(16))
+ end
+  
+ foreach(splosions, draw_splosion)
+ 
+ print(score, 1, 1, 11)
  print("ships:", 100, 1, 5);
- print(shipcount, 124, 1, 11)
+ print(mans, 124, 1, 11)
  print("picoroids", 46, 1, 9)
  print("arrow keys to pilot, z to shoot", 2, 122, 5)
+
 end
 
+function draw_splosion(s)
+ for i=1,#(s.particles) do
+  pset(
+   s.x + (cos(s.particles[i].dir/360) * s.particles[i].speed * s.time * s.mag),
+   s.y - (sin(s.particles[i].dir/360) * s.particles[i].speed * s.time * s.mag),
+   s.time < (s.maxtime / 2) and s.clr or rnd(16)
+  )
+ end
+ s.time += 1
+ if (s.time == s.maxtime) del(splosions, s)
+end
+
+
 function _update()
- if btn(2) then
-  ship.xvel+=cos(ship.dir/360)/ship.thrustdiv
-  ship.yvel-=sin(ship.dir/360)/ship.thrustdiv
- else
-  ship.xvel *= friction
-  ship.yvel *= friction
- end
- if btn(1) then
-  ship.dir = (ship.dir + ship.turnspeed)%360
- end
- if btn(0) then
-  ship.dir = (ship.dir - ship.turnspeed)%360
+ 
+ if (levelwait > 0) then
+  levelwait -= 1
+  if (levelwait == 0) init_roids()
  end
  
- if btnp(4) then
-  for i=1,4 do
-   if shots[i].time == 0 then
-    sfx(1) -- shoot
-    shots[i].time = shottime
-    shots[i].x = ship.x + (cos(ship.dir/360)*5)
-    shots[i].y = ship.y - (sin(ship.dir/360)*5)
-    shots[i].xvel = (
-     ship.xvel + 
-     cos(ship.dir/360)*1.5
-    )
-    shots[i].yvel = (
-     ship.yvel -
-     sin(ship.dir/360)*1.5
-    )
-    break
+ foreach(roids, move)
+
+ if (not game_over and dead) then
+  if (deadwait > 0) then
+   deadwait -= 1
+  else
+   if is_safe() then
+    dead = false
+    init_ship()
    end
   end
  end
  
- move(ship)
- foreach(roids, move)
+ if (not dead) then
+	 if btn(2) then
+	  ship.xvel+=cos(ship.dir/360)/ship.thrustdiv
+	  ship.yvel-=sin(ship.dir/360)/ship.thrustdiv
+	 else
+	  ship.xvel *= friction
+	  ship.yvel *= friction
+	 end
+	 if btn(1) then
+	  ship.dir = (ship.dir + ship.turnspeed)%360
+	 end
+	 if btn(0) then
+	  ship.dir = (ship.dir - ship.turnspeed)%360
+	 end
+	 
+	 if btnp(4) then
+	  for i=1,4 do
+	   if shots[i].time == 0 then
+	    sfx(1) -- shoot
+	    shots[i].time = shottime
+	    shots[i].x = ship.x + (cos(ship.dir/360)*5)
+	    shots[i].y = ship.y - (sin(ship.dir/360)*5)
+	    shots[i].xvel = (
+	     ship.xvel + 
+	     cos(ship.dir/360)*1.5
+	    )
+	    shots[i].yvel = (
+	     ship.yvel -
+	     sin(ship.dir/360)*1.5
+	    )
+	    break
+	   end
+	  end
+	 end
+	 
+	 move(ship)
+  dead = roidcollision(ship, roids)
+	 if (dead) then
+   add_splosion(ship.x, ship.y, 200, 1, ship.clr, 120)
+   sfx(2)
+	  mans -= 1
+	  if mans == 0 then
+		  game_over = true
+		 end
+		 deadwait=150	 
+	 end
+
+ end
+   
  foreach(roids, spin)
  
  for i = 1,4 do
@@ -113,23 +165,88 @@ function _update()
  
 end
 
+function is_safe()
+ for i=1,#roids do
+  if (
+   78 > roids[i].x-roids[i].w and
+   50 < roids[i].x+roids[i].w and
+   78 > roids[i].y-roids[i].w and
+   50 < roids[i].y+roids[i].w
+  ) then
+   return false
+  end
+ end
+ return true
+end
+
+function roidcollision(o, t)
+ for i=1,#t do
+  if (
+   o.x + o.w > t[i].x-t[i].w and
+   o.x - o.w < t[i].x+t[i].w and
+   o.y + o.w > t[i].y-t[i].w and
+   o.y - o.w < t[i].y+t[i].w
+  ) then
+   kill_roid(t[i])
+   return true
+  end
+ end
+ return false
+end
+
 function shotcollision(shot, targets)
  for i=1,#targets do
   if (
    shot.time>0 and
-   shot.x > targets[i].x-targets[i].width and
-   shot.x < targets[i].x+targets[i].width and
-   shot.y > targets[i].y-targets[i].width and
-   shot.y < targets[i].y+targets[i].width
+   shot.x > targets[i].x-targets[i].w and
+   shot.x < targets[i].x+targets[i].w and
+   shot.y > targets[i].y-targets[i].w and
+   shot.y < targets[i].y+targets[i].w
   ) then
-   score += targets[i].score
    shot.time=0
-   del(targets, targets[i])
+   kill_roid(targets[i])
   end
  end
- if (#targets==0) init_roids(flr(rnd(10))+2)
+ if (#targets==0) then
+  if (levelwait == 0) then
+	  level += 1
+	  levelwait = 90
+	 end
+ end
 end
+
+function kill_roid(roid)
+ score += roid.score
+ add_splosion(roid.x, roid.y, 30, 1, roid.clr, 30)
+ sfx(2)
+ del(roids, roid)   
+ if (roid.size > 1) then
+  add_roid(roid.size-1, roid.x, roid.y)
+  add_roid(roid.size-1, roid.x, roid.y)
+ end
  
+end
+
+function add_splosion(x, y, particles, mag, clr, maxtime)
+ splosion={}
+ splosion.x=x
+ splosion.y=y
+ splosion.time=5
+ splosion.mag=mag
+ splosion.clr=clr
+ splosion.maxtime=maxtime
+ 
+ splosion.particles={}
+ 
+ for i=1,particles do
+  particle={}
+  particle.dir=rnd(360)
+  particle.speed=rnd(1)
+  add(splosion.particles,particle)
+ end
+ add(splosions, splosion)
+end
+
 function countdown(obj)
  if (obj.time > 0) obj.time -= 1
 end
@@ -172,7 +289,7 @@ shipvec = {
  {0, 4}
 }
 
-roidvec = {
+medroidvec = {
  {0, 5},
  {30, 4},
  {70, 5},
@@ -186,7 +303,32 @@ roidvec = {
  {340, 5},
  {0, 5}
 }
- 
+
+smallroidvec = {
+ {30, 3},
+ {110, 2},
+ {140, 2},
+ {200, 2},
+ {240, 2},
+ {300, 3},
+ {320, 3},
+ {30, 3}
+}
+
+bigroidvec = {
+ {30, 8},
+ {110, 9},
+ {140, 7},
+ {160, 9},
+ {190, 8},
+ {230, 9},
+ {250, 7},
+ {280, 7},
+ {300, 9},
+ {320, 8},
+ {30, 8}
+}
+
 thrustvec = {
  {160, 4},
  {180, 6},
@@ -201,21 +343,77 @@ thrustvec2 = {
 -->8
 function init_roids(num)
  roids = {}
+ for i=1,level+3 do
+  side = flr(rnd(4))
+  if (side == 0) add_roid(3, rnd(128), 0)
+  if (side == 1) add_roid(3, 128, rnd(128))
+  if (side == 2) add_roid(3, rnd(128), 128)
+  if (side == 3) add_roid(3, 0, rnd(128))
+ end   
+end
+
+function add_roids(size, num)
  for i=1,num do
-  roids[i] = {
-   vec = roidvec,
-   clr = flr(rnd(14))+2,
-   dir = rnd(360),
-	  x = rnd(128),
-	  y = rnd(128),
-	  xvel = rnd(1)-.5,
-	  yvel = rnd(1)-.5,
-	  turnspeed=rnd(6),
-	  turndir=flr(rnd(2)),
-	  width=5,
-	  score=20
-  }  
+	 x = rnd(128)
+	 y = rnd(128)
+  add_roid(size, x, y)
  end
+end
+
+function add_roid(_size, _x, _y)
+
+ newroid = {
+  x = _x,
+  y = _y,
+  clr = flr(rnd(14))+2,
+  dir = rnd(360),
+	 turndir=flr(rnd(2)),
+	 size = _size
+ }
+
+ if (_size == 3) then
+  newroid.vec = bigroidvec
+	 newroid.w=6
+	 newroid.score=2
+	 newroid.xvel = rnd(1)-.5
+	 newroid.yvel = rnd(1)-.5
+	 newroid.turnspeed=rnd(5)
+	end
+ 
+ if (_size == 2) then
+  newroid.vec = medroidvec
+	 newroid.w=4
+	 newroid.score=5
+	 newroid.xvel = rnd(1.5)-.75
+	 newroid.yvel = rnd(1.5)-.75
+	 newroid.turnspeed=rnd(8)
+	end
+	
+	if (_size == 1) then
+	 newroid.vec = smallroidvec
+	 newroid.w=2.5
+	 newroid.score=10
+	 newroid.xvel = rnd(2)-1
+	 newroid.yvel = rnd(2)-1
+	 newroid.turnspeed=rnd(10)
+	end
+	
+	add(roids, newroid)
+
+end
+
+function init_ship()
+ ship = {
+	 dir=270,
+	 x=64.5,
+	 y=64.5,
+	 xvel=0,
+	 yvel=0,
+	 turnspeed=5,
+	 thrustdiv=20,
+	 clr=15,
+	 w=4
+ }
 end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -355,5 +553,6 @@ __label__
 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
 
 __sfx__
-000100000061000610006100061000610006100061000610006102e6002e6002e6002e60000000000000000000000000000000000000000000000000000000000000000000000003e70000000000000000000000
+000100000063000630006300063000630006300063000630006302e6002e6002e6002e60000000000000000000000000000000000000000000000000000000000000000000000003e70000000000000000000000
 00020000207501e7501b750187501675012750107500c7500a7500875006750047500375009700077000770006700067000670000000000000000000000000000000000000000000000000000000000000000000
+00070000246202362022620206201f6201e6201d6201c6201a6201862017620156201462012620116200f6200e6200d6200b6200a620096200862007620056200462004620036200162000620006200062000620
